@@ -115,7 +115,8 @@ class bcm_msg_head(Structure):
                 ('ival2',bcm_timeval),
                 ('can_id',c_uint32),
                 ('nframes',c_uint32),
-                ('frames',can_frame),
+                #('frames',can_frame),
+                ('frames',can_frame*1)#,<-- the correct way but we have problems with variable size arrays for whatever reason
                 ]
     
 #     def __init__(self):
@@ -128,10 +129,16 @@ class bcm_msg_head(Structure):
 TX_SETUP = 1
 TX_DELETE = 2
 TX_READ = 3
-
+RX_SETUP = 5
+RX_DELETE = 6
+RX_READ = 7
+RX_STATUS = 10
+RX_TIMEOUT = 11
+RX_CHANGED = 12
 
 SETTIMER = 0x0001
 STARTTIMER = 0x0002
+RX_FILTER_ID = 0x0020
 # class opcode(Enum):stupid idea ;-Ps
 #     TX_SETUP = 1
 #     TX_DELETE = 2

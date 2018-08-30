@@ -4,7 +4,7 @@
 #
 import socket
 
-from socketcan_core import can_frame,bcm_msg_head,CAN_EFF_FLAG,TX_SETUP,TX_DELETE,SETTIMER,STARTTIMER,TX_READ
+from socketcan_core import * #we are lazy#can_frame,canfd_frame,bcm_msg_head,CAN_EFF_FLAG,TX_SETUP,TX_DELETE,SETTIMER,STARTTIMER,TX_READ
 import time
 from ctypes import sizeof
 #from array import array
@@ -53,6 +53,27 @@ def test_can_raw_transmit(interface="vcan0"):
     
 
 
+def test_can_fd_raw_transmit(interface="vcan0"):
+    #first define the socket
+    s = socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_RAW_FD_FRAMES)
+    #bind it
+    s.bind((interface,))
+    
+    msg = canfd_frame()
+    
+    msg.can_id = 0x12345678
+    if msg.can_id > 0x7FF:
+        msg.can_id |= CAN_EFF_FLAG
+    data = list(range(64))
+    for i,x in enumerate(data):
+        msg.data[i]=x
+    msg.len = len(data)
+    s.send(msg)
+    s.close()
+    return
+    
+
+
 def test_can_bcm_transmit(interface="vcan0"):#CHECK THIS WORKS NOW, so if it does not work tomorrow, there is something fishy
     #first define the socket
     s = socket.socket(socket.PF_CAN,socket.SOCK_DGRAM,socket.CAN_BCM)
@@ -77,32 +98,84 @@ def test_can_bcm_transmit(interface="vcan0"):#CHECK THIS WORKS NOW, so if it doe
     head.ival2.tv_usec = 0
     head.can_id = msg.can_id
     head.nframes = 1
-    head.frames=msg
+    head.frames[0]=msg
     
     
     s.send(head)
-    #a = bytearray(head)
-    #print(len(a))
-    
-#     head.opcode = TX_READ
-#     s.send(head)
-#     
-#     msg = s.recv(sizeof(bcm_msg_head)) 
-#     res = bcm_msg_head.from_buffer_copy(msg)
-    #print(res.opcode,res.flags)
-    
+
     time.sleep(10)
+    
+    head.ival2.tv_sec = 2
+    head.ival2.tv_usec = 0
+    head.flags = SETTIMER
+    s.send(head)
+    time.sleep(10)
+    head.flags = 0
+    head.frames[0].data[0]=0x22
+    s.send(head)
+    time.sleep(10)
+    
     head.opcode = TX_DELETE
     s.send(head)
     s.close()
     return
     
 
+def test_isotp_transmit(interface="vcan0",rx_addr=0x7E0,tx_addr=0x7E8):
+    #first define the socket
+    s = socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_ISOTP)
+    #bind it
+    s.bind((interface, rx_addr, tx_addr))
+    
+    data = list(range(64))
 
-# s = socket.socket(socket.PF_CAN,socket.SOCK_DGRAM,socket.CAN_BCM)
-# s.connect(("vcan0",))
+    s.send(data)
+    s.close()
+    return
 
+def test_can_bcm_receive(interface="vcan0"):
+    import threading
+    worker = threading.Thread(target=lambda : test_can_bcm_transmit(interface=interface))
+    worker.start()
+    s = socket.socket(socket.PF_CAN,socket.SOCK_DGRAM,socket.CAN_BCM)
+    #connect instead of bind presumably because the socket is of type SOCK_DGRAM
+    s.connect((interface,))
+    
+    
+    head = bcm_msg_head()
+    head.opcode = RX_SETUP
+    head.flags = (SETTIMER | STARTTIMER | RX_FILTER_ID);
+    head.can_id = 0x123
+    head.ival1.tv_sec = 1
+    head.ival1.tv_usec = 500000
+    head.ival2.tv_sec = 0
+    head.ival2.tv_usec = 0    
+    head.nframes = 0
+    s.send(head)
+    
+    try:
+        for i in range(40):
+            #head.opcode = RX_READ
+            msg = s.recv(sizeof(bcm_msg_head))
+            #print(s.recvmsg(sizeof(bcm_msg_head)))
+            rxhead = bcm_msg_head.from_buffer_copy(msg)
+            print("Loop {0} Opcode {1}".format(i,rxhead.opcode))
+    except:
+        print("something went wrong")
+    finally:
+        head.opcode = RX_DELETE
+        s.send(head)
+    
+    worker.join(100)
+    print("end")
+    return
+    
+    
+    
 if __name__ == "__main__":
-    #test_can_raw_receive()
-    #test_can_raw_transmit()
-    test_can_bcm_transmit()
+    test_can_bcm_receive()
+#     test_can_raw_receive()
+#     test_can_raw_transmit()
+#     test_can_bcm_transmit()
+#     test_can_fd_raw_transmit()
+#     test_isotp_transmit()
