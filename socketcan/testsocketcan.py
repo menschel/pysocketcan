@@ -123,14 +123,18 @@ def test_can_bcm_transmit(interface="vcan0"):#CHECK THIS WORKS NOW, so if it doe
 
 def test_isotp_transmit(interface="vcan0",rx_addr=0x7E0,tx_addr=0x7E8):
     #first define the socket
-    s = socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_ISOTP)
+    s = socket.socket(socket.AF_CAN,socket.SOCK_DGRAM,socket.CAN_ISOTP)
     #bind it
     s.bind((interface, rx_addr, tx_addr))
     
-    data = list(range(64))
+    data = bytes(list(range(64)))
 
     s.send(data)
     s.close()
+
+#works unbelievable nice
+# isotprecv -s 7e0 -d 7e8 vcan0
+# 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F 20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F 30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F 
     return
 
 def test_can_bcm_receive(interface="vcan0"):
@@ -173,9 +177,9 @@ def test_can_bcm_receive(interface="vcan0"):
     
     
 if __name__ == "__main__":
-    test_can_bcm_receive()
+#     test_can_bcm_receive()
 #     test_can_raw_receive()
 #     test_can_raw_transmit()
 #     test_can_bcm_transmit()
 #     test_can_fd_raw_transmit()
-#     test_isotp_transmit()
+    test_isotp_transmit()
