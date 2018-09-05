@@ -4,7 +4,7 @@
 #
 import socket
 
-from socketcan_core import * #we are lazy#can_frame,canfd_frame,bcm_msg_head,CAN_EFF_FLAG,TX_SETUP,TX_DELETE,SETTIMER,STARTTIMER,TX_READ
+from socketcan_core import * 
 import time
 from ctypes import sizeof
 #from array import array
@@ -139,6 +139,10 @@ def test_isotp_transmit(interface="vcan0",rx_addr=0x7E0,tx_addr=0x7E8):
 
 
 def test_isotp_receive(interface="vcan0",rx_addr=0x7E0,tx_addr=0x7E8):
+    import threading
+    worker = threading.Thread(target=lambda : test_isotp_transmit(interface=interface,rx_addr=tx_addr,tx_addr=rx_addr))
+    
+    
     #first define the socket
     s = socket.socket(socket.AF_CAN,socket.SOCK_DGRAM,socket.CAN_ISOTP)
     #bind it
@@ -147,6 +151,7 @@ def test_isotp_receive(interface="vcan0",rx_addr=0x7E0,tx_addr=0x7E8):
 #    data = bytes(list(range(64)))
 
     data = bytearray(s.recv(64))
+    worker.start()
     print(data)
     s.close()
 #echo 11 22 33 44 55 66 DE AD BE EF | isotpsend -s 7e0 -d 7e8 vcan0
