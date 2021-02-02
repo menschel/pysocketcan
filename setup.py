@@ -25,6 +25,6 @@ setuptools.setup(
         'Topic :: Utilities',
     ],
     python_requires='>=3.7',
-    keywords='socketcan','can'
+    keywords='socketcan can'
 
 )

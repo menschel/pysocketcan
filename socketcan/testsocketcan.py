@@ -4,7 +4,7 @@
 #
 import socket
 
-from socketcan_core import * 
+from socketcan.socketcan_core import BCMFlags,BcmOpCodes,can_frame,CanFlags,canfd_frame,bcm_msg_head
 import time
 from ctypes import sizeof
 #from array import array
@@ -42,7 +42,7 @@ def test_can_raw_transmit(interface="vcan0"):
     msg = can_frame()
     msg.can_id = 0x12345678
     if msg.can_id > 0x7FF:
-        msg.can_id |= CAN_EFF_FLAG
+        msg.can_id |= CanFlags.CAN_EFF_FLAG
     data = [0,1,2,3,4,5,6,7]
     for i,x in enumerate(data):
         msg.data[i]=x
@@ -63,7 +63,7 @@ def test_can_fd_raw_transmit(interface="vcan0"):
     
     msg.can_id = 0x12345678
     if msg.can_id > 0x7FF:
-        msg.can_id |= CAN_EFF_FLAG
+        msg.can_id |= CanFlags.CAN_EFF_FLAG
     data = list(range(64))
     for i,x in enumerate(data):
         msg.data[i]=x
@@ -88,8 +88,8 @@ def test_can_bcm_transmit(interface="vcan0"):#CHECK THIS WORKS NOW, so if it doe
     msg.can_dlc = len(data)
     
     head = bcm_msg_head()
-    head.opcode = TX_SETUP
-    head.flags = (SETTIMER | STARTTIMER);
+    head.opcode = BcmOpCodes.TX_SETUP
+    head.flags = (BCMFlags.SETTIMER | BCMFlags.STARTTIMER);
     #print(head.flags)
 #     head.count = 0
 #     head.ival1.tv_sec = 0
@@ -107,7 +107,7 @@ def test_can_bcm_transmit(interface="vcan0"):#CHECK THIS WORKS NOW, so if it doe
     
     head.ival2.tv_sec = 2
     head.ival2.tv_usec = 0
-    head.flags = SETTIMER
+    head.flags = BCMFlags.SETTIMER
     s.send(head)
     time.sleep(10)
     head.flags = 0
@@ -115,7 +115,7 @@ def test_can_bcm_transmit(interface="vcan0"):#CHECK THIS WORKS NOW, so if it doe
     s.send(head)
     time.sleep(10)
     
-    head.opcode = TX_DELETE
+    head.opcode = BcmOpCodes.TX_DELETE
     s.send(head)
     s.close()
     return
@@ -168,8 +168,8 @@ def test_can_bcm_receive(interface="vcan0"):
     
     
     head = bcm_msg_head()
-    head.opcode = RX_SETUP
-    head.flags = (SETTIMER | STARTTIMER | RX_FILTER_ID);
+    head.opcode = BcmOpCodes.RX_SETUP
+    head.flags = (BCMFlags.SETTIMER | BCMFlags.STARTTIMER | BCMFlags.RX_FILTER_ID);
     head.can_id = 0x123
     head.ival1.tv_sec = 1
     head.ival1.tv_usec = 500000
@@ -188,7 +188,7 @@ def test_can_bcm_receive(interface="vcan0"):
     except:
         print("something went wrong")
     finally:
-        head.opcode = RX_DELETE
+        head.opcode = BcmOpCodes.RX_DELETE
         s.send(head)
     
     worker.join(100)

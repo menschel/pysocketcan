@@ -3,7 +3,11 @@
 # description: main file containing the structures etc
 #
 from ctypes import Structure,c_uint8,c_uint32,c_uint64,c_long,sizeof
-# from enum import Enum
+from enum import IntEnum
+#from builtins import int
+import struct
+
+from _collections_abc import Iterable
 
 #why this inconsistent use of long,intXX types
 
@@ -16,7 +20,9 @@ from ctypes import Structure,c_uint8,c_uint32,c_uint64,c_long,sizeof
 #     __u8    __res1;  /* reserved / padding */
 #     __u8    data[CAN_MAX_DLEN] __attribute__((aligned(8)));
 # };
-CAN_EFF_FLAG = 0x80000000
+
+class CanFlags(IntEnum):
+    CAN_EFF_FLAG = 0x80000000
 
 class can_frame(Structure):
 #     _pack_ = 1
@@ -83,7 +89,7 @@ class can_filter(Structure):
 #                 ]
 
     
-class bcm_timeval(Structure):
+class bcm_timeval(Structure):  # <-- this obviously does not work on a 32bit raspberry pi ;-P
 #     _pack_ = 1
     _fields_ = [
                 ('tv_sec',c_uint64),
@@ -126,33 +132,35 @@ class bcm_msg_head(Structure):
 #         self.can_id = 0
 #         self.nframes = 0
 
-TX_SETUP = 1
-TX_DELETE = 2
-TX_READ = 3
-RX_SETUP = 5
-RX_DELETE = 6
-RX_READ = 7
-RX_STATUS = 10
-RX_TIMEOUT = 11
-RX_CHANGED = 12
+def float_to_ival(x:float) -> bytes:
+    num = int(x)
+    frac = (x-num)*1000000
+    return struct.pack("!ll",num,frac)  # <-- 2 signed long
 
-SETTIMER = 0x0001
-STARTTIMER = 0x0002
-RX_FILTER_ID = 0x0020
-# class opcode(Enum):stupid idea ;-Ps
-#     TX_SETUP = 1
-#     TX_DELETE = 2
-if __name__ == "__main__":
-#     head = bcm_msg_head()
-#     parts = (bytearray(head.opcode),
-#              bytearray(head.flags),
-#              bytearray(head.count),
-#              bytearray(head.ival1),
-#              bytearray(head.ival2),
-#              bytearray(head.can_id),
-#              bytearray(head.nframes),
-#              bytearray(head.frames)
-#              )
-#     
-#     [print(x) for x in parts]
-    print(sizeof(bcm_msg_head))
+def bcm_msg(opcode: int,
+            flags: int,
+            count: int,
+            ival1: float,
+            ival2: float,
+            can_msgs: Iterable) -> bytes:
+    ret = bytearray()
+    ret.extend((opcode,flags,count))
+    ret.extend(float_to_ival())
+    
+
+class BcmOpCodes(IntEnum):
+    TX_SETUP = 1
+    TX_DELETE = 2
+    TX_READ = 3
+    RX_SETUP = 5
+    RX_DELETE = 6
+    RX_READ = 7
+    RX_STATUS = 10
+    RX_TIMEOUT = 11
+    RX_CHANGED = 12
+
+class BCMFlags(IntEnum):
+    SETTIMER = 0x0001
+    STARTTIMER = 0x0002
+    RX_FILTER_ID = 0x0020
+
