@@ -1,7 +1,8 @@
 # file: test_socketcan.py
 # author: (c) Menschel 2021
 # description: tests for socketcan.py
-from socketcan import *
+
+from socketcan import CanFrame,CanFlags,BCMFlags,BcmMsg,BcmOpCodes
 
 def test_can_frame_creation_with_short_id():
     can_id = 0x123
