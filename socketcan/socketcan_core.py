@@ -37,6 +37,7 @@ class CanFlags(IntEnum):
 
 
 class can_frame(Structure):
+    _pack_ = 8
     _fields_ = [
                 ('can_id',c_uint32),
                 ('can_dlc',c_uint8),
@@ -59,6 +60,7 @@ class can_frame(Structure):
 
 CANFD_MAX_DLEN = 64
 class canfd_frame(Structure):
+    _pack_ = 8
     _fields_ = [
                 ('can_id',c_uint32),
                 ('len',c_uint8),
