@@ -206,3 +206,36 @@ def test_bcm_msg_creation_with_2_extended_frames_and_different_sizes():
     
     bcm2 = BcmMsg.from_bytes(bcm_as_bytes)
     assert bcm1 == bcm2
+
+
+
+def test_bcm_msg_creation_with_2_extended_frames_and_ival1():
+    can_id = 0x12345678
+    data = bytes(range(0,0x88,0x11))
+     
+    frame1 = CanFrame(can_id=can_id,
+                         data=data)
+    can_id2 = 0x1FFFF456
+    data2 = bytes(range(0,0x44,0x11))
+    frame2 = CanFrame(can_id=can_id2,
+                         data=data2)
+        
+    opcode = BcmOpCodes.TX_SETUP
+    flags = (BCMFlags.SETTIMER | BCMFlags.STARTTIMER)
+    frames = [frame1,
+              frame2,
+              ]
+    interval1 = 0.1
+    interval2 = 5
+    bcm1 = BcmMsg(opcode=opcode,
+                 flags=flags,
+                 can_id=can_id,
+                 frames = frames,
+                 ival1=interval1,
+                 ival2=interval2,
+                 )
+    bcm_as_bytes = bcm1.to_bytes()
+    assert len(bcm_as_bytes) == BcmMsg.get_size()+(CanFrame.get_size()*len(frames))
+    
+    bcm2 = BcmMsg.from_bytes(bcm_as_bytes)
+    assert bcm1 == bcm2
