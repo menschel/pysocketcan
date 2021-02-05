@@ -164,6 +164,7 @@ class BcmMsg:
                    self.flags == other.flags,
                    self.count == other.count,
                    self.ival1 == other.ival1,
+                   self.ival2 == other.ival2,
                    self.can_id == other.can_id,
                    self.frames == other.frames,
                    ))
@@ -200,12 +201,12 @@ class CanRawSocket:
         self.s = socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_RAW)
         self.s.bind((interface,))
     
-    def send_frame(self, frame: CanFrame):
+    def send(self, frame: CanFrame):
         return self.s.send(frame.to_bytes())
     
-    def recv_frame(self):
-        data = self.s.recv(len(CanFrame))
-        assert len(data) == len(CanFrame)
+    def recv(self):
+        data = self.s.recv(CanFrame.get_size())
+        assert len(data) == CanFrame.get_size()
         frame = CanFrame.from_bytes(data)
         return frame
 
