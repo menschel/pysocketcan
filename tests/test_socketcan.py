@@ -9,14 +9,15 @@ import pytest
 
 from queue import Queue
 
-from socketcan import CanFrame,CanFlags,BCMFlags,BcmMsg,BcmOpCodes,CanRawSocket,CanIsoTpSocket
+from socketcan import CanFrame,CanFlags,BCMFlags,BcmMsg,BcmOpCodes,CanRawSocket,CanIsoTpSocket,CanBcmSocket
 
 from subprocess import CalledProcessError,check_output
 
 from threading import Thread
 
 import time
-from pickle import TRUE
+
+import platform
 
 
 class TestObjectCreation():
@@ -370,3 +371,23 @@ class TestSocketOperations:
         p.join()
         
         assert data == data2
+        
+    def test_bcm_msg_length_correct_for_bcm_socket(self):
+        s = CanBcmSocket(interface="vcan0")
+        
+        can_id = 0x12345678
+        data = bytes(range(0,0x88,0x11))
+        frame1 = CanFrame(can_id=can_id,
+                          data=data)
+        
+        bcm = BcmMsg(opcode=BcmOpCodes.TX_SETUP,
+                     flags=(BCMFlags.SETTIMER | BCMFlags.STARTTIMER),
+                     can_id=can_id,
+                     frames = [frame1,],
+                     ival1=0,
+                     ival2=1,
+        )
+        try:
+            s.send(bcm)
+        except OSError:
+            assert False, "The length of bcm_msg is false. Length {0} Platform {1}".format(len(bcm.to_bytes()),platform.machine())

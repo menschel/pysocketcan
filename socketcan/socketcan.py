@@ -59,8 +59,7 @@ class CanFrame:
         @param flags: the flags, the 3 top bits in the MSB of the can_id
     """
 
-    FORMAT = "=IB3x8s"
-    BYTE_LENGTH = 16
+    FORMAT = "IB3x8s"
     
     def __init__(self,
                  can_id: int,
@@ -111,7 +110,7 @@ class CanFrame:
     @classmethod
     def get_size(cls):
         """ size getter """
-        return cls.BYTE_LENGTH
+        return struct.calcsize(cls.FORMAT)
 
 
 # TODO: make tests for BcmMsg as well
@@ -128,8 +127,9 @@ class BcmMsg:
         @param ival1: the interval between each CanFrame in frames  
     """
     
-    BYTE_LENGTH = 40  # actually 36 + alignment to 8 bytes 
-    FORMAT = "=IIIllllII4x"
+    # this is a great hack, we force alignment to 8 byte boundary
+    # by adding a zero length long long 
+    FORMAT = "IIIllllII0q"  
     
     def __init__(self,
                  opcode: int,
@@ -202,7 +202,7 @@ class BcmMsg:
     @classmethod
     def get_size(cls):
         """ size getter """
-        return cls.BYTE_LENGTH
+        return struct.calcsize(cls.FORMAT)
  
 
 class CanRawSocket:
