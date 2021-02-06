@@ -1,6 +1,9 @@
-# file: socketcan.py
-# author: (c) Menschel 2018-2021
-# description: make socketcan accessible in a python3 way
+""" Socketcan
+
+    An abstraction to socketcan interface using python objects
+    @author: Patrick Menschel (menschel.p@posteo.de)
+    @license: GPL v3 
+"""
 
 import socket
 import struct
@@ -37,17 +40,20 @@ class CanFlags(IntEnum):
 
 
 def float_to_timeval(val):
+    """ helper to split time value """
     sec = int(val)
     usec = int((val-sec)*1000000)
     return sec,usec
 
 
 def timeval_to_float(sec,usec):
+    """ helper to merge time values """
     return sec+(usec/1000000)
 
 
 class CanFrame:
     """ A CAN frame or message, low level calls it frame, high level calls it a message
+    
         @param can_id: the can bus id of the frame, integer in range 0-0x1FFFFFFF
         @param data: the data bytes of the frame
         @param flags: the flags, the 3 top bits in the MSB of the can_id
@@ -72,20 +78,20 @@ class CanFrame:
         self.data = data
         
     def to_bytes(self):
-        """ return the byte representation of the can frame
-            that socketcan expects
-        """
+        """ return the byte representation of the can frame that socketcan expects """
         data = self.data
         data.ljust(8)
         return struct.pack(self.FORMAT, (self.can_id | self.flags), len(self.data), data)
     
     def __eq__(self, other):
+        """ standard equality operation """
         return all((self.can_id == other.can_id,
                    self.flags == other.flags,
                    self.data == other.data
                    ))
     
     def __ne__(self, other):
+        """ standard non equality operation """
         return not self.__eq__(other)
         
     
@@ -93,6 +99,7 @@ class CanFrame:
 
     @classmethod
     def from_bytes(cls,byte_repr):
+        """ factory to create instance from bytes representation """
         can_id_w_flags, data_length, data = struct.unpack(cls.FORMAT,byte_repr)
         flags = (can_id_w_flags & 0xE0000000)
         can_id = (can_id_w_flags & 0x1FFFFFFF)
@@ -103,6 +110,7 @@ class CanFrame:
 
     @classmethod
     def get_size(cls):
+        """ size getter """
         return cls.BYTE_LENGTH
 
 
@@ -111,13 +119,13 @@ class BcmMsg:
     """ Abstract the message to BCM socket
     
         The params have been reordered for convenience
-        @param opcode
-        @param flags
-        @param can_id of can message
-        @param frames an iterable of CanFrames
-        @param ival2 the interval between new repetition of frames
-        @param count of repetition
-        @param ival1 the interval between each CanFrame in frames  
+        @param opcode:
+        @param flags:
+        @param can_id: of can message
+        @param frames: an iterable of CanFrames
+        @param ival2: the interval between new repetition of frames
+        @param count: of repetition
+        @param ival1: the interval between each CanFrame in frames  
     """
     
     BYTE_LENGTH = 40  # actually 36 + alignment to 8 bytes 
@@ -144,9 +152,7 @@ class BcmMsg:
 
         
     def to_bytes(self):
-        """ return the byte representation of the bcm message
-            that socketcan expects
-        """
+        """ return the byte representation of the bcm message that socketcan expects """
         ival1_sec,ival1_usec = float_to_timeval(self.ival1)
         ival2_sec,ival2_usec = float_to_timeval(self.ival2)
         byte_repr = bytearray()
@@ -160,6 +166,7 @@ class BcmMsg:
         return byte_repr
     
     def __eq__(self, other):
+        """ standard equality operation """
         return all((self.opcode == other.opcode,
                    self.flags == other.flags,
                    self.count == other.count,
@@ -170,10 +177,12 @@ class BcmMsg:
                    ))
     
     def __ne__(self, other):
+        """ standard non equality operation """
         return not self.__eq__(other)
 
     @classmethod    
     def from_bytes(cls,byte_repr: bytes):
+        """ factory to create instance from bytes representation """
         opcode, flags, count, ival1_sec, ival1_usec, ival2_sec, ival2_usec, \
         can_id, nframes = struct.unpack(cls.FORMAT,byte_repr[:cls.get_size()])
         ival1 = timeval_to_float(ival1_sec, ival1_usec)
@@ -192,22 +201,100 @@ class BcmMsg:
 
     @classmethod
     def get_size(cls):
+        """ size getter """
         return cls.BYTE_LENGTH
  
 
 class CanRawSocket:
+    """ A socket to raw CAN interface
+    
+        @param: interface name
+    """
     
     def __init__(self,interface):
         self.s = socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_RAW)
         self.s.bind((interface,))
     
     def send(self, frame: CanFrame):
+        """ send a CAN frame
+        
+            @param frame: a CanFrame 
+        """
         return self.s.send(frame.to_bytes())
     
     def recv(self):
+        """ receive a CAN frame """
         data = self.s.recv(CanFrame.get_size())
         assert len(data) == CanFrame.get_size()
         frame = CanFrame.from_bytes(data)
         return frame
 
+
+# Note: untested, incomplete recv function
+class CanBcmSocket:
+    """ A socket to broadcast manager
+    
+        @param: interface name
+    """
+    
+    def __init__(self,interface: str):
+        self.s = socket.socket(socket.PF_CAN,socket.SOCK_DGRAM,socket.CAN_BCM)
+        self.s.connect((interface,))
+    
+    def send(self, bcm_msg: BcmMsg):
+        """ send a bcm message to bcm socket
+        
+            @param bcm: A bcm message to be sent 
+        """
+        return self.s.send(bcm_msg.to_bytes())
+    
+    def recv(self):
+        """ receive a bcm message from bcm socket """
+        raise NotImplementedError
+        data = bytearray()
+        data.extend(self.s.recv(BcmMsg.get_size()))
+        # TODO: implement look ahead how many can frames are to read
+        assert len(data) == BcmMsg.get_size()
+        bcm_msg = BcmMsg.from_bytes(data)
+        return bcm_msg
+    
+    def setup_cyclic_transmit(self,
+                              frame: CanFrame,
+                              interval: int):
+        """ convenience function to abstract the socket interface
+        
+            @param frame: A CAN frame to be sent
+            @param interval: the interval it should be sent  
+        """
+        bcm = BcmMsg(opcode=BcmOpCodes.TX_SETUP,
+             flags=(BCMFlags.SETTIMER | BCMFlags.STARTTIMER),
+             can_id=frame.can_id,
+             frames = [frame,],
+             ival1=0,
+             ival2=interval,
+             )
+        return self.send(bcm)
+
+# untested
+class CanIsoTpSocket:
+    """ A socket to IsoTp
+    
+        @param interface: name
+        @param rx_addr: the can_id that is received
+        @param tx_addr: the can_id that is transmitted 
+    """
+    def __init__(self,
+                 interface: str,
+                 rx_addr: int,
+                 tx_addr: int):
+        self.s = socket.socket(socket.AF_CAN,socket.SOCK_DGRAM,socket.CAN_ISOTP)
+        self.s.bind((interface, rx_addr, tx_addr))
+    
+    def send(self, data: bytes):
+        """ wrapper for send """
+        return self.s.send(data)
+    
+    def recv(self, bufsize: int):
+        """ wrapper for receive """
+        return self.s.recv(bufsize)
 

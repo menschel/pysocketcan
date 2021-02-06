@@ -1,9 +1,12 @@
-# file: test_socketcan.py
-# author: (c) Menschel 2021
-# description: tests for socketcan.py
+""" Test_socketcan
+
+    Collection of tests for socketcan module to be run with pytest / tox / coverage
+    @author: Patrick Menschel (menschel.p@posteo.de)
+    @license: GPL v3 
+"""
 
 import time
-# from multiprocessing import Process, Queue
+
 from queue import Queue
 from threading import Thread
 
