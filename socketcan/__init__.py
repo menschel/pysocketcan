@@ -1,1 +1,1 @@
-from socketcan.socketcan import BCMFlags,BcmMsg,BcmOpCodes,CanFlags,CanFrame,CanRawSocket
+from socketcan.socketcan import BCMFlags,BcmMsg,BcmOpCodes,CanFlags,CanFrame,CanRawSocket,CanIsoTpSocket

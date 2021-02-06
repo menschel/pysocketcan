@@ -275,7 +275,7 @@ class CanBcmSocket:
              )
         return self.send(bcm)
 
-# untested
+
 class CanIsoTpSocket:
     """ A socket to IsoTp
     

@@ -9,13 +9,14 @@ import pytest
 
 from queue import Queue
 
-from socketcan import CanFrame,CanFlags,BCMFlags,BcmMsg,BcmOpCodes,CanRawSocket
+from socketcan import CanFrame,CanFlags,BCMFlags,BcmMsg,BcmOpCodes,CanRawSocket,CanIsoTpSocket
 
 from subprocess import CalledProcessError,check_output
 
 from threading import Thread
 
 import time
+from pickle import TRUE
 
 
 class TestObjectCreation():
@@ -302,6 +303,7 @@ class TestObjectCreation():
         assert bcm1 == bcm2
 
 def is_interface_present(interface):
+    """ helper function """
     try:
         if check_output("ifconfig | grep {0}".format(interface), shell=True).strip():
             return True
@@ -309,10 +311,20 @@ def is_interface_present(interface):
         pass    
     return False
 
+def is_isotp_available():
+    """ helper function """
+    try:
+        if check_output("ls /lib/modules/$(uname -r)/kernel/net/can/can-isotp.ko",shell=True).strip():
+            return True
+    except CalledProcessError:
+        pass
+    return False
+
 @pytest.mark.skipif(not is_interface_present("vcan0"), reason="this test requires vcan0 to be set up")
 class TestSocketOperations:
 
     def receive_from_can_raw_socket(self,interface,q):
+        """ helper function """
         s = CanRawSocket(interface=interface)
         q.put(s.recv())
 
@@ -333,3 +345,28 @@ class TestSocketOperations:
         p.join()
          
         assert frame1 == frame2
+    
+    def receive_from_can_isotp_socket(self,interface,rx_addr,tx_addr,bufsize,q):
+        """ helper function """
+        s = CanIsoTpSocket(interface=interface, rx_addr=rx_addr, tx_addr=tx_addr)
+        q.put(s.recv(bufsize=bufsize))
+    
+    @pytest.mark.skipif(not  is_isotp_available(), reason="this test requires isotp kernel module, mainline kernel >= 5.10")
+    def test_can_isotp_socket(self):
+        interface = "vcan0"
+        rx_addr = 0x7e0
+        tx_addr = 0x7e8
+        s = CanIsoTpSocket(interface=interface, rx_addr=rx_addr, tx_addr=tx_addr)
+        data = bytes(list(range(64)))
+        bufsize = len(data)
+        q = Queue()
+        # Note: the receive thread logically has rx_addr, tx_addr inverted!
+        p = Thread(target=self.receive_from_can_isotp_socket, args=(interface,tx_addr,rx_addr,bufsize,q,))
+        p.start()
+        time.sleep(1)        
+        s.send(data)
+        
+        data2 = q.get()
+        p.join()
+        
+        assert data == data2
