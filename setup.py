@@ -4,14 +4,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pysocketcan",
-    version="0.0.1",
+    name="socketcan",
+    version="0.1.0",
     author="Patrick Menschel",
     author_email="menschel.p@posteo.de",
-    description="A simple interface to socketcan",
+    description="A python 3 interface to socketcan",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/menschel/pysocketcan",
+    url="https://github.com/menschel/socketcan",
     packages=setuptools.find_packages(),
     classifiers=[
         "Development Status :: 2 - Beta",
