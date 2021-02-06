@@ -12,6 +12,8 @@ from threading import Thread
 
 from socketcan import CanFrame,CanFlags,BCMFlags,BcmMsg,BcmOpCodes,CanRawSocket
 
+import pytest
+
 
 
 def test_unequal_frames():
@@ -300,7 +302,7 @@ def receive_from_can_raw_socket(interface,q):
     s = CanRawSocket(interface=interface)
     q.put(s.recv())
 
- 
+@pytest.mark.skip(reason="this test requires vcan0 to be set up")
 def test_can_raw_socket():
     interface = "vcan0"
     s = CanRawSocket(interface=interface)
