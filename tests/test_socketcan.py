@@ -20,6 +20,9 @@ import time
 import platform
 
 
+# TODO: Add a pytest fixture that sets up vcan0 and tears it down afterwards, this requires superuser permissions though.
+
+
 class TestObjectCreation():
     
     def test_unequal_frames(self):
@@ -339,6 +342,7 @@ class TestSocketOperations:
         
         q = Queue()
         p = Thread(target=self.receive_from_can_raw_socket, args=(interface,q,))
+        p.setDaemon(True)
         p.start()
         time.sleep(1)
         s.send(frame1)
@@ -363,6 +367,7 @@ class TestSocketOperations:
         q = Queue()
         # Note: the receive thread logically has rx_addr, tx_addr inverted!
         p = Thread(target=self.receive_from_can_isotp_socket, args=(interface,tx_addr,rx_addr,bufsize,q,))
+        p.setDaemon(True)
         p.start()
         time.sleep(1)        
         s.send(data)
@@ -372,8 +377,9 @@ class TestSocketOperations:
         
         assert data == data2
         
-    def test_bcm_msg_length_correct_for_bcm_socket(self):
-        s = CanBcmSocket(interface="vcan0")
+    def test_bcm_msg_and_bcm_socket_send_operation(self):
+        interface="vcan0"
+        s = CanBcmSocket(interface=interface)
         
         can_id = 0x12345678
         data = bytes(range(0,0x88,0x11))
@@ -387,7 +393,17 @@ class TestSocketOperations:
                      ival1=0,
                      ival2=1,
         )
+        q = Queue()
+        p = Thread(target=self.receive_from_can_raw_socket, args=(interface,q,))
+        p.setDaemon(True)
+        p.start()
         try:
             s.send(bcm)
         except OSError:
             assert False, "The length of bcm_msg is false. Length {0} Platform {1}".format(len(bcm.to_bytes()),platform.machine())
+        else:
+            time.sleep(1)
+            frame2 = q.get()
+            p.join()
+                        
+            assert frame1 == frame2

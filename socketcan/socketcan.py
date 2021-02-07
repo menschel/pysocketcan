@@ -200,6 +200,11 @@ class BcmMsg:
                       )
 
     @classmethod
+    def get_nframes_from_bytes(cls,byte_repr: bytes):
+        """ return the nframes value from a bcm_msg_head"""
+        return struct.unpack(cls.FORMAT,byte_repr[:cls.get_size()])[-1]
+
+    @classmethod
     def get_size(cls):
         """ size getter """
         return struct.calcsize(cls.FORMAT)
@@ -230,7 +235,7 @@ class CanRawSocket:
         return frame
 
 
-# Note: untested, incomplete recv function
+# Note: RX side is untested
 class CanBcmSocket:
     """ A socket to broadcast manager
     
@@ -250,13 +255,12 @@ class CanBcmSocket:
     
     def recv(self):
         """ receive a bcm message from bcm socket """
-        raise NotImplementedError
         data = bytearray()
         data.extend(self.s.recv(BcmMsg.get_size()))
-        # TODO: implement look ahead how many can frames are to read
         assert len(data) == BcmMsg.get_size()
-        bcm_msg = BcmMsg.from_bytes(data)
-        return bcm_msg
+        nframes = BcmMsg.get_nframes_from_bytes()
+        data.extend(self.s.recv(CanFrame.get_size() * nframes))        
+        return BcmMsg.from_bytes(data)
     
     def setup_cyclic_transmit(self,
                               frame: CanFrame,
@@ -267,6 +271,23 @@ class CanBcmSocket:
             @param interval: the interval it should be sent  
         """
         bcm = BcmMsg(opcode=BcmOpCodes.TX_SETUP,
+             flags=(BCMFlags.SETTIMER | BCMFlags.STARTTIMER),
+             can_id=frame.can_id,
+             frames = [frame,],
+             ival1=0,
+             ival2=interval,
+             )
+        return self.send(bcm)
+    
+    def setup_cyclic_receive(self,
+                             frame: CanFrame,
+                             interval: int):
+        """ convenience function to abstract the socket interface
+        
+            @param frame: A CAN frame to be received, the frame data is a filter
+            @param interval: the interval it should be received  
+        """
+        bcm = BcmMsg(opcode=BcmOpCodes.RX_SETUP,
              flags=(BCMFlags.SETTIMER | BCMFlags.STARTTIMER),
              can_id=frame.can_id,
              frames = [frame,],
