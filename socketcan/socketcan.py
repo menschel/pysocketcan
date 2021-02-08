@@ -5,6 +5,8 @@
     @license: GPL v3 
 """
 
+# TODO: Add CAN FD support
+
 import socket
 import struct
 
@@ -113,7 +115,6 @@ class CanFrame:
         return struct.calcsize(cls.FORMAT)
 
 
-# TODO: make tests for BcmMsg as well
 class BcmMsg:
     """ Abstract the message to BCM socket
     
@@ -219,6 +220,9 @@ class CanRawSocket:
     def __init__(self,interface):
         self.s = socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_RAW)
         self.s.bind((interface,))
+
+    def __del__(self):
+        self.s.close()
     
     def send(self, frame: CanFrame):
         """ send a CAN frame
@@ -245,6 +249,9 @@ class CanBcmSocket:
     def __init__(self,interface: str):
         self.s = socket.socket(socket.PF_CAN,socket.SOCK_DGRAM,socket.CAN_BCM)
         self.s.connect((interface,))
+
+    def __del__(self):
+        self.s.close()
     
     def send(self, bcm_msg: BcmMsg):
         """ send a bcm message to bcm socket
@@ -264,7 +271,7 @@ class CanBcmSocket:
     
     def setup_cyclic_transmit(self,
                               frame: CanFrame,
-                              interval: int):
+                              interval: float):
         """ convenience function to abstract the socket interface
         
             @param frame: A CAN frame to be sent
@@ -281,7 +288,7 @@ class CanBcmSocket:
     
     def setup_cyclic_receive(self,
                              frame: CanFrame,
-                             interval: int):
+                             interval: float):
         """ convenience function to abstract the socket interface
         
             @param frame: A CAN frame to be received, the frame data is a filter
@@ -310,6 +317,9 @@ class CanIsoTpSocket:
                  tx_addr: int):
         self.s = socket.socket(socket.AF_CAN,socket.SOCK_DGRAM,socket.CAN_ISOTP)
         self.s.bind((interface, rx_addr, tx_addr))
+
+    def __del__(self):
+        self.s.close()
     
     def send(self, data: bytes):
         """ wrapper for send """
